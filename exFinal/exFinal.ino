@@ -6,6 +6,8 @@ int class_;
 float angle;
 int action;
 
+int lastClass = 0;
+
 bool driveEnabled = false;
 
 void setup()
@@ -18,48 +20,56 @@ void loop()
 {
     if(readCommand(class_, angle, action))
     {
-        switch(class_)
-        {
-            case 9: // START
-                driveEnabled = true;
-                applyAngleDrive(0,1.0,0); // 직진!!!!!!!!!!!!!
-                break;
+        lastClass = class_;
+    }
 
-            case 10: // ARRIVE
-                driveEnabled = false;
-                stopMotors();
-                break;
+    switch(lastClass)
+    {
+        case 9: // START
+            driveEnabled = true;
+            break;
 
-            case 1:
-                processDrive(angle, ACT_FORWARD); // 직진!!!!!!!
-                break;
+        case 10: // ARRIVE
+            stopMotors();
+            driveEnabled = false;
+            cancelRoutine();
+            break;
 
-            case 2: // 물류
+        case 1: // 일반 주행
+            if(driveEnabled && !isRoutineActive())
+                processDrive(angle, ACT_FORWARD);
+            break;
+
+        case 2: // 물류 루틴
+            if(driveEnabled && !isRoutineActive())
                 startRoutine(1);
-                break;
+            break;
 
-            case 3: // 사람 감지
-                stopMotors();
-                break;
+        case 3: // 사람 감지
+            stopMotors();
+            driveEnabled = false;
+            cancelRoutine();
+            break;
 
-            case 4: // 자동차 감지
-                if(driveEnabled && !isRoutineActive())
-                    processDrive(angle, ACT_SLOW);
-                break;
+        case 4: // 자동차 감지
+            if(driveEnabled && !isRoutineActive())
+                processDrive(angle, ACT_SLOW);
+            break;
 
-            case 5: 
+        case 5: // 좌회피
+            if(driveEnabled && !isRoutineActive())
                 processDrive(angle, ACT_LEFT);
-                break;
+            break;
 
-            case 6: // 도착 주차
+        case 6: // 도착 주차
+            if(driveEnabled && !isRoutineActive())
                 startRoutine(2);
-                break;
+            break;
 
-            default:
-                if(driveEnabled && !isRoutineActive())
-                    processDrive(angle, action);
-                break;
-        }
+        default:
+            if(driveEnabled && !isRoutineActive())
+                processDrive(angle, action);
+            break;
     }
 
     processRoutine();

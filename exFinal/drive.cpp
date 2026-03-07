@@ -1,17 +1,13 @@
 #include <Arduino.h>
 #include "drive.h"
 #include "motor.h"
-/* ====================================================
-* 기본 주행 + 시간 + 여러 주행 묶은 루틴(특수 주행)
-* ================================================== */
 
 /* ================= Timed Action ================= */
-// 시간 고려 행동 구조체
 struct TimedAction
 {
-    BaseAction action; // 어떤 주행 할지
-    float angle; // 직진/서행같이 angle 필요할 경우 사용
-    int duration; // 몇 ms 동안 유지할지
+    BaseAction action;
+    float angle;
+    unsigned long duration;
 };
 
 /* ================= 기본 주행 실행 ================= */
@@ -20,11 +16,11 @@ void executeBaseAction(BaseAction act, float angle)
     switch(act)
     {
         case ACT_FORWARD:
-            applyAngleDrive(angle,1.0,0); // angle반영 차동 주행
+            applyAngleDrive(angle,1.0,0);
             break;
 
         case ACT_LEFT:
-            applyAngleDrive(-30,1.0,0); // angle:-30 고정 주행
+            applyAngleDrive(-30,1.0,0);
             break;
 
         case ACT_RIGHT:
@@ -32,11 +28,11 @@ void executeBaseAction(BaseAction act, float angle)
             break;
 
         case ACT_ROTATE:
-            setWheelRPM(20,-20); // 좌우 바퀴 돌려서 제자리회전
+            setWheelRPM(20,-20);
             break;
 
         case ACT_REVERSE:
-            setWheelRPM(-20,-20); // 양쪽 바퀴 모두 뒤로
+            setWheelRPM(-20,-20);
             break;
 
         case ACT_STOP:
@@ -49,26 +45,25 @@ void executeBaseAction(BaseAction act, float angle)
     }
 }
 
-/* ================= 기본 주행 ================= */
+/* ================= 일반 주행 ================= */
 static BaseAction currentAction = ACT_STOP;
 static unsigned long actionStart = 0;
-static int actionDuration = 0;
+static unsigned long actionDuration = 0;
 
 void processDrive(float angle, int action)
 {
+    if(routineActive) return;
+
     unsigned long now = millis();
 
-    if(action != currentAction) // 새로운 주행이 들어왔는지 확인
+    if(action != currentAction)
     {
-        currentAction = action; // 현재 주행 업데이트
-        actionStart = now; // 새로운 주행 시간 시작
+        currentAction = (BaseAction)action;
+        actionStart = now;
 
         switch(action)
         {
             case ACT_LEFT:
-                actionDuration = 2000;
-                break;
-
             case ACT_RIGHT:
                 actionDuration = 2000;
                 break;
@@ -78,44 +73,47 @@ void processDrive(float angle, int action)
         }
     }
 
-    // 현재 주행 시간제한이 있고 주행 시간이 제한보다 넘어가면
     if(actionDuration > 0 && now - actionStart > actionDuration)
     {
-        currentAction = ACT_FORWARD; // 직진으로 복귀
+        currentAction = ACT_FORWARD;
         actionDuration = 0;
     }
 
-    executeBaseAction((BaseAction)currentAction, angle); // 현재 주행 실행
+    executeBaseAction(currentAction, angle);
 }
 
 /* ================= Routine ================= */
-static bool routineActive = false; // 특수 주행 진행중 여부
-static int routineIndex = 0; // 현재 루틴에서 몇번째 행동 실행 중인지
-static unsigned long routineStart = 0; // 현재 단계 시작 시간
+static bool routineActive = false;
+static int routineIndex = 0;
+static unsigned long routineStart = 0;
 
-// 특수주행 확인
+static int routineLength = 0;   // 추가
+
+TimedAction logisticsRoutine[] =
+{
+    {ACT_FORWARD,0,2000},
+    {ACT_REVERSE,0,1000},
+    {ACT_STOP,0,0}
+};
+
+TimedAction finishRoutine[] =
+{
+    {ACT_RIGHT,0,2000},
+    {ACT_FORWARD,0,1000},
+    {ACT_STOP,0,0}
+};
+
+TimedAction* currentRoutine = nullptr;
+
 bool isRoutineActive()
 {
     return routineActive;
 }
 
-/* 물류 주차 루틴 */
-TimedAction logisticsRoutine[] =
+void cancelRoutine()
 {
-    {ACT_FORWARD,0,2000}, // 직진 2초-> 죄회전함 ㅋㅋㅋㅋ
-    {ACT_REVERSE,0,1000}, // 후진 1초 
-    {ACT_STOP,0,0} // 정지
-};
-
-/* 도착 주차 루틴 */
-TimedAction finishRoutine[] =
-{
-    {ACT_RIGHT,0,20z00}, // 우회전 1.5초 
-    {ACT_FORWARD,0,1000}, // 직진 1초
-    {ACT_STOP,0,0} // 정지
-};
-
-TimedAction* currentRoutine = nullptr; // 현재 실행할 특수 주행 선택
+    routineActive = false;
+}
 
 /* ================= Routine 시작 ================= */
 void startRoutine(int routine)
@@ -125,15 +123,18 @@ void startRoutine(int routine)
     routineStart = millis();
 
     actionDuration = 0;
+    currentAction = ACT_STOP;
 
     switch(routine)
     {
         case 1:
             currentRoutine = logisticsRoutine;
+            routineLength = sizeof(logisticsRoutine) / sizeof(TimedAction);
             break;
 
         case 2:
             currentRoutine = finishRoutine;
+            routineLength = sizeof(finishRoutine) / sizeof(TimedAction);
             break;
     }
 }
@@ -145,21 +146,29 @@ void processRoutine()
         return;
 
     unsigned long now = millis();
-    TimedAction act = currentRoutine[routineIndex];
+
+    TimedAction &act = currentRoutine[routineIndex];
 
     executeBaseAction(act.action, act.angle);
 
-    if(act.duration == 0) return;
+    // duration 0이면 루틴 종료
+    if(act.duration == 0)
+    {
+        routineActive = false;
+        return;
+    }
 
-    if(now - routineStart > act.duration)
+    if(now - routineStart >= act.duration)
     {
         routineIndex++;
         routineStart = now;
 
-        if(currentRoutine[routineIndex].action == ACT_STOP)
+        // 루틴 끝 체크 (배열 범위 보호)
+        if(routineIndex >= routineLength)
         {
             executeBaseAction(ACT_STOP,0);
             routineActive = false;
+            return;
         }
     }
 }

@@ -18,8 +18,11 @@ enum BaseAction
 
 bool isRoutineActive();
 
+// 일반 주행
 void processDrive(float angle, int action);
+void executeBaseAction(BaseAction act, float angle);
 
+// 특수 주행
 void startRoutine(int routine);
 void processRoutine();
 
