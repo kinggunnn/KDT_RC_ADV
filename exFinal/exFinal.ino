@@ -18,35 +18,49 @@ void loop()
 {
     if(readCommand(class_, angle, action))
     {
-        // 라이다 클래스로 두는지 클래스 아이디로 둘지
         switch(class_)
         {
             case 9: // START
                 driveEnabled = true;
-
-                applyAngleDrive(0,1.0,0); // 직진
-                delay(500);               // 0.5초
-                stopMotors();
-
+                applyAngleDrive(0,1.0,0); // 직진!!!!!!!!!!!!!
                 break;
 
-            case 10: // STOP
+            case 10: // ARRIVE
                 driveEnabled = false;
                 stopMotors();
                 break;
 
-            case 4: // PERSON
+            case 1:
+                processDrive(angle, ACT_FORWARD); // 직진!!!!!!!
+                break;
+
+            case 2: // 물류
+                startRoutine(1);
+                break;
+
+            case 3: // 사람 감지
                 stopMotors();
                 break;
 
-            case 5: // CAR
-                processDrive(angle,4);
+            case 4: // 자동차 감지
+                if(driveEnabled && !isRoutineActive())
+                    processDrive(angle, ACT_SLOW);
+                break;
+
+            case 5: 
+                processDrive(angle, ACT_LEFT);
+                break;
+
+            case 6: // 도착 주차
+                startRoutine(2);
                 break;
 
             default:
-                if(driveEnabled)
-                    processDrive(angle,action);
+                if(driveEnabled && !isRoutineActive())
+                    processDrive(angle, action);
                 break;
         }
     }
+
+    processRoutine();
 }

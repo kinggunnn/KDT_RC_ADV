@@ -32,13 +32,13 @@ static float clampf(float v,float min,float max)
     return v;
 }
 
-static void setWheelRPM(float left,float right)
+void setWheelRPM(float left,float right)
 {
-    left  = clampf(left,  MIN_RPM, MAX_RPM);
-    right = clampf(right, MIN_RPM, MAX_RPM);
+    left = clampf(left,MIN_RPM,MAX_RPM);
+    right = clampf(right,MIN_RPM,MAX_RPM);
 
-    dxl.setGoalVelocity(LEFT_ID,  left,  UNIT_RPM);
-    dxl.setGoalVelocity(RIGHT_ID, right, UNIT_RPM);
+    dxl.setGoalVelocity(LEFT_ID,left,UNIT_RPM);
+    dxl.setGoalVelocity(RIGHT_ID,right,UNIT_RPM);
 }
 
 void stopMotors()
