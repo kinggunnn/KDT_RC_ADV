@@ -1,28 +1,30 @@
-#include <Arduino.h>
+﻿#include <Arduino.h>
 #include "drive.h"
 #include "motor.h"
 
-/* ================= Drive Mode ================= */
-// 현재 주행시스템이 무엇인지 나타냄.
+/*
+ * 주행 로직 개발/실험용 파일
+ * (모드 기반 분기 방식 참고용)
+ */
+
 enum DriveMode
 {
-    MODE_MANUAL, //일반주행(angle, action에 따라 바로 주행)
-    MODE_ROUTINE //루틴주행(미리 정해둔 루틴 순서대로 수행)
+    MODE_MANUAL,
+    MODE_ROUTINE
 };
 
-static DriveMode driveMode = MODE_MANUAL; //현재 어떤 주행 중인지
+// 현재 주행 모드(수동/루틴)
+static DriveMode driveMode = MODE_MANUAL;
 
-/* ================= Timed Action ================= */
-// 주행 관련 구조체.
+// 루틴의 한 단계(동작, 조향각, 유지시간)
 struct TimedAction
 {
-    BaseAction action; // 어떤 주행할지(직진, 좌회전, ...)
-    float angle; // 조향이 필요한 동작일때 사용할 값
-    unsigned long duration; // 해당 동작을 몇 ms동안 유지할지
+    BaseAction action;
+    float angle;
+    unsigned long duration;
 };
 
-/* ================= Routine State ================= */
-// 현재 실행 중인 루틴의 상태 저장
+// 루틴 실행 상태 관리용 구조체
 struct RoutineState
 {
     bool active;
@@ -34,15 +36,14 @@ struct RoutineState
 
 static RoutineState routine =
 {
-    false,  //비활성
-    0,      //인덱스
-    0,      //시작시간 0(초기)
-    0,      //길이 0(초기)
-    nullptr //현재 루틴 없음
+    false,
+    0,
+    0,
+    0,
+    nullptr
 };
 
-/* ================= 기본 주행 실행 ================= */
-//실제 주행 명령을 모터 제어로
+// 기본 동작을 모터 제어 명령으로 변환
 void executeBaseAction(BaseAction act, float angle)
 {
     switch(act)
@@ -59,7 +60,11 @@ void executeBaseAction(BaseAction act, float angle)
             applyAngleDrive(30,1.0,0);
             break;
 
-        case ACT_ROTATE:
+        case ACT_ROTATE_L:
+            setWheelRPM(-30,30);
+            break;
+
+        case ACT_ROTATE_R:
             setWheelRPM(30,-30);
             break;
 
@@ -77,15 +82,12 @@ void executeBaseAction(BaseAction act, float angle)
     }
 }
 
-/* ================= 일반 주행 ================= */
-// 일반 주행 처리
+// 수동 모드에서는 명령을 즉시 실행
 void manualDrive(float angle, int action)
 {
     executeBaseAction((BaseAction)action, angle);
 }
 
-/* ================= Routine 정의 ================= */
-//action, angle, duration
 TimedAction logisticsRoutine[] =
 {
     {ACT_FORWARD,0,2000},
@@ -94,32 +96,35 @@ TimedAction logisticsRoutine[] =
 };
 
 TimedAction finishRoutine[] =
-{   
-    {ACT_ROTATE,0,2000},
+{
+    {ACT_ROTATE_R,0,2000},
     {ACT_FORWARD,0,1000},
-    {ACT_ROTATE,0,2000},
+    {ACT_ROTATE_R,0,2000},
     {ACT_REVERSE,0,2000},
     {ACT_STOP,0,0}
 };
 
-/* ================= Routine 시작 ================= */
-// 루틴 시작 준비
+// 지정된 루틴을 시작하고 모드를 루틴으로 전환
 void startRoutine(int type)
 {
-    routine.active = true;      //루틴 시작 준비
-    routine.index = 0;          //루틴 첫번째 단계부터 시작
-    routine.start = millis();   //현재 단계 시작 시간 기록
+    routine.active = true;
+    routine.index = 0;
+    routine.start = millis();
 
-    driveMode = MODE_ROUTINE;   //루틴 모드로
+    driveMode = MODE_ROUTINE;
 
     switch(type)
     {
         case 1:
-            routine.routine = logisticsRoutine;
-            routine.length = sizeof(logisticsRoutine) / sizeof(TimedAction);
+            routine.routine = logisticsRoutineIn;
+            routine.length = sizeof(logisticsRoutineIn) / sizeof(TimedAction);
             break;
 
         case 2:
+            routine.routine = logisticsRoutineOut;
+            routine.length = sizeof(logisticsRoutineOut) / sizeof(TimedAction);
+            break;
+        case 3:
             routine.routine = finishRoutine;
             routine.length = sizeof(finishRoutine) / sizeof(TimedAction);
             break;
@@ -131,18 +136,16 @@ void startRoutine(int type)
     }
 }
 
-/* ================= Routine 실행 ================= */
+// 시간 기반으로 현재 루틴 단계를 진행
 void updateRoutine()
 {
-    //루틴이 비활성상태거나 루틴 포인터x -> 동작x
     if(!routine.active || routine.routine == nullptr)
         return;
 
-    unsigned long now = millis(); //현재 시간 읽고
+    unsigned long now = millis();
+    TimedAction &act = routine.routine[routine.index];
 
-    TimedAction &act = routine.routine[routine.index]; // 단계 가져온다
-
-    executeBaseAction(act.action, act.angle); //현재 단계 실행
+    executeBaseAction(act.action, act.angle);
 
     if(act.duration == 0)
     {
@@ -151,12 +154,11 @@ void updateRoutine()
         return;
     }
 
-    //시간만료 검사
     if(now - routine.start >= act.duration)
     {
         routine.index++;
         routine.start = now;
-        //배열 끝 검사(범위 보호)
+
         if(routine.index >= routine.length)
         {
             stopMotors();
@@ -166,7 +168,7 @@ void updateRoutine()
     }
 }
 
-/* ================= Drive Update ================= */
+// 현재 모드에 따라 수동/루틴 업데이트를 분기
 void updateDrive(float angle, int action)
 {
     if(driveMode == MODE_MANUAL)
