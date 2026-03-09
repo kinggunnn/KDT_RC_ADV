@@ -28,7 +28,7 @@ void executeBaseAction(BaseAction act, float angle)
             break;
 
         case ACT_ROTATE:
-            setWheelRPM(20,-20);
+            setWheelRPM(30,-30);
             break;
 
         case ACT_REVERSE:
@@ -98,9 +98,11 @@ TimedAction logisticsRoutine[] =
 
 TimedAction finishRoutine[] =
 {
-    {ACT_RIGHT,0,2000},
+    {ACT_ROTATE,0,2000},
     {ACT_FORWARD,0,1000},
-    {ACT_STOP,0,0}
+    {ACT_ROTATE,0,2000},
+    {ACT_REVERSE,0,2000},
+    {ACT_STOP,0,0}    
 };
 
 TimedAction* currentRoutine = nullptr;
