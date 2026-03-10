@@ -1,4 +1,4 @@
-﻿#include <Arduino.h>
+﻿﻿#include <Arduino.h>
 #include "drive.h"
 #include "motor.h"
 
@@ -140,6 +140,10 @@ bool isRoutineActive()
 void cancelRoutine()
 {
     routineActive = false;
+    currentRoutine = nullptr;
+    routineLength = 0;
+    routineIndex = 0;
+    executeBaseAction(ACT_STOP, 0);
 }
 
 // [주요 기능] 지정 루틴 시작
@@ -209,4 +213,4 @@ void processRoutine()
             return;
         }
     }
-}
+} 
