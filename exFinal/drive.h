@@ -1,4 +1,4 @@
-﻿#ifndef DRIVE_H
+#ifndef DRIVE_H
 #define DRIVE_H
 
 #include "motor.h"

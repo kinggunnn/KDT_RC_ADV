@@ -1,4 +1,4 @@
-﻿#include "communication.h"
+#include "communication.h"
 #include "drive.h"
 #include "motor.h"
 

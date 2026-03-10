@@ -1,4 +1,4 @@
-﻿#include "motor.h"
+#include "motor.h"
 #include "config.h"
 
 #include <Dynamixel2Arduino.h>

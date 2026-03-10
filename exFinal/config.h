@@ -1,4 +1,4 @@
-﻿#ifndef CONFIG_H
+#ifndef CONFIG_H
 #define CONFIG_H
 
 // ===================== 통신 설정 =================
