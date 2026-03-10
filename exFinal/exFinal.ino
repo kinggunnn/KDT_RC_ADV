@@ -6,8 +6,6 @@ int class_;
 float angle;
 int action;
 
-int lastClass = 0;
-
 bool driveEnabled = false;
 
 void setup()
@@ -20,57 +18,63 @@ void loop()
 {
     if(readCommand(class_, angle, action))
     {
-        lastClass = class_;
+        Serial.print("class: ");
+        Serial.println(class_);
+
+        Serial.print("action: ");
+        Serial.println(action);
+
+        switch(class_)
+        {
+            case 9: // START
+                driveEnabled = true;
+                cancelRoutine();
+                action = ACT_FORWARD;
+            break;
+
+            case 10: // ARRIVE
+                driveEnabled = false;
+                emergencyStop();
+            break;
+
+            case 3: // 사람 감지 → 긴급정지
+                driveEnabled = false;
+                emergencyStop();
+            break;
+
+            case 2: // 물류 루틴
+                if(driveEnabled)
+                    startRoutine(logisticsRoutine, logisticsRoutineLength);
+            break;
+
+            case 6: // 주차 루틴
+                if(driveEnabled)
+                    startRoutine(parkingRoutine, parkingRoutineLength);
+            break;
+
+            case 5: // 직진
+                action = ACT_FORWARD;
+            break;
+
+            case 7: // 좌회전
+                action = ACT_LEFT;
+            break;
+
+            case 8: // 우회전
+                action = ACT_RIGHT;
+            break;
+
+            case 4: // 저속 주행
+                action = ACT_SLOW;
+            break;
+
+            default:
+            break;
+        }
     }
 
-    switch(lastClass)
-    {
-        case 9: // START
-            driveEnabled = true;
-            break;
+    if(driveEnabled)
+        updateDrive(angle, action);
 
-        case 10: // ARRIVE
-            stopMotors();
-            driveEnabled = false;
-            cancelRoutine();
-            break;
-
-        case 1: // 일반 주행
-            if(driveEnabled && !isRoutineActive())
-                processDrive(angle, ACT_FORWARD);
-            break;
-
-        case 2: // 물류 루틴
-            if(driveEnabled && !isRoutineActive())
-                startRoutine(1);
-            break;
-
-        case 3: // 사람 감지
-            stopMotors();
-            driveEnabled = false;
-            cancelRoutine();
-            break;
-
-        case 4: // 자동차 감지
-            if(driveEnabled && !isRoutineActive())
-                processDrive(angle, ACT_SLOW);
-            break;
-
-        case 5: // 좌회피
-            if(driveEnabled && !isRoutineActive())
-                processDrive(angle, ACT_LEFT);
-            break;
-
-        case 6: // 도착 주차
-            if(driveEnabled && !isRoutineActive())
-                startRoutine(2);
-            break;
-
-        default:
-            if(driveEnabled && !isRoutineActive())
-                processDrive(angle, action);
-            break;
-    }
-
-    processRoutine();
+    updateRoutine();
 }

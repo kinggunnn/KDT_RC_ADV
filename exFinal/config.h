@@ -2,11 +2,9 @@
 #define CONFIG_H
 
 // ===================== Communication =================
-
 #define COMM_BAUDRATE 57600 // 57600
 
 // ===================== Dynamixel =====================
-
 #define DXL_BAUDRATE 1000000
 #define DXL_PROTOCOL_VERSION 2.0
 
@@ -17,7 +15,6 @@
 #define RIGHT_ID 2
 
 // ===================== Drive Parameters ===============
-
 #define BASE_RPM 30.0f
 #define MAX_RPM 60.0f
 #define MIN_RPM -60.0f

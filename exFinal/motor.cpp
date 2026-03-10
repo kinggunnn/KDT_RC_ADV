@@ -4,7 +4,8 @@
 #include <Dynamixel2Arduino.h>
 #include <Arduino.h>
 
-#define DXL_SERIAL Serial
+// #define DXL_SERIAL Serial   // 다이나믹실드
+#define DXL_SERIAL Serial3
 
 Dynamixel2Arduino dxl(DXL_SERIAL, DXL_DIR_PIN);
 
