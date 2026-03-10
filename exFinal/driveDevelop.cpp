@@ -88,13 +88,23 @@ void manualDrive(float angle, int action)
     executeBaseAction((BaseAction)action, angle);
 }
 
-TimedAction logisticsRoutine[] =
+// 물류 들어가는 모드
+TimedAction logisticsRoutineIn[] =
 {
     {ACT_FORWARD,0,2000},
     {ACT_REVERSE,0,1000},
     {ACT_STOP,0,0}
 };
 
+// 물류 나오는 모드
+TimedAction logisticsRoutineOut[] =
+{
+    {ACT_FORWARD,0,2000},
+    {ACT_REVERSE,0,1000},
+    {ACT_STOP,0,0}
+};
+
+// 주차 모드
 TimedAction finishRoutine[] =
 {
     {ACT_ROTATE_R,0,2000},
